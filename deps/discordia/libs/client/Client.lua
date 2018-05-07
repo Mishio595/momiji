@@ -23,6 +23,8 @@ local Emitter = require('utils/Emitter')
 local Logger = require('utils/Logger')
 local Mutex = require('utils/Mutex')
 
+local VoiceManager = require('voice/VoiceManager')
+
 local encode, decode, null = json.encode, json.decode, json.null
 local readFileSync, writeFileSync = fs.readFileSync, fs.writeFileSync
 
@@ -34,6 +36,7 @@ local time, difftime = os.time, os.difftime
 local format = string.format
 
 local CACHE_AGE = constants.CACHE_AGE
+local GATEWAY_VERSION = constants.GATEWAY_VERSION
 
 -- do not change these options here
 -- pass a custom table on client construction instead
@@ -97,9 +100,11 @@ function Client:__init(options)
 	self._relationships = Cache({}, Relationship, self)
 	self._webhooks = WeakCache({}, Webhook, self) -- used for audit logs
 	self._logger = Logger(options.logLevel, options.dateTime, options.logFile)
+	self._voice = VoiceManager(self)
 	self._role_map = {}
 	self._emoji_map = {}
 	self._channel_map = {}
+	self._events = require('client/EventHandler')
 end
 
 for name, level in pairs(logLevel) do
@@ -107,6 +112,19 @@ for name, level in pairs(logLevel) do
 		local msg = self._logger:log(level, fmt, ...)
 		return self:emit(name, msg or format(fmt, ...))
 	end
+end
+
+function Client:_deprecated(clsName, before, after)
+	local info = debug.getinfo(3)
+	return self:warning(
+		'%s:%s: %s.%s is deprecated; use %s.%s instead',
+		info.short_src,
+		info.currentline,
+		clsName,
+		before,
+		clsName,
+		after
+	)
 end
 
 local function run(self, token)
@@ -123,6 +141,7 @@ local function run(self, token)
 		return self:error('Could not authenticate, check token: ' .. err1)
 	end
 	self._user = users:_insert(user)
+	self._token = token
 
 	self:info('Authenticated as %s#%s', user.username, user.discriminator)
 
@@ -220,14 +239,15 @@ local function run(self, token)
 	end
 
 	self._total_shard_count = count
-	self._shard_count = last - first
+	self._shard_count = d
 
 	for id = first, last do
 		self._shards[id] = Shard(id, self)
 	end
 
+	local path = format('/?v=%i&encoding=json', GATEWAY_VERSION)
 	for _, shard in pairs(self._shards) do
-		wrap(shard.connect)(shard, url, token)
+		wrap(shard.connect)(shard, url, path)
 		shard:identifyWait()
 	end
 
@@ -291,8 +311,8 @@ function Client:getWebhook(id)
 	end
 end
 
-function Client:getInvite(code)
-	local data, err = self._api:getInvite(code)
+function Client:getInvite(code, counts)
+	local data, err = self._api:getInvite(code, counts and {with_counts = true})
 	if data then
 		return Invite(data, self)
 	else
@@ -328,6 +348,18 @@ function Client:getChannel(id)
 	else
 		return self._private_channels:get(id) or self._group_channels:get(id)
 	end
+end
+
+function Client:getRole(id)
+	id = Resolver.roleId(id)
+	local guild = self._role_map[id]
+	return guild and guild._roles:get(id)
+end
+
+function Client:getEmoji(id)
+	id = Resolver.emojiId(id)
+	local guild = self._emoji_map[id]
+	return guild and guild._emojis:get(id)
 end
 
 function Client:listVoiceRegions()

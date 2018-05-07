@@ -1,0 +1,8 @@
+discordia.log
+gateway.json
+rethinkdb_data/
+options.json
+.luacheckrc
+luvitreql.log
+deps/luvit-reql/
+res/settings.lua

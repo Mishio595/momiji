@@ -38,7 +38,7 @@ local function parseErrors(ret, errors, key)
 			end
 		else
 			if key then
-				parseErrors(ret, v, f(k:find("^[%a_][%a%d_]*$") and '%s.%s' or '%s[%q]', key, k))
+				parseErrors(ret, v, f(k:find("^[%a_][%a%d_]*$") and '%s.%s' or tonumber(k) and '%s[%d]' or '%s[%q]', key, k))
 			else
 				parseErrors(ret, v, k)
 			end
@@ -128,7 +128,7 @@ function API:request(method, endpoint, payload, query, files)
 
 	local _, main = running()
 	if main then
-		return nil, 'Cannot make HTTP request outside of a coroutine'
+		return error('Cannot make HTTP request outside of a coroutine', 2)
 	end
 
 	local url = BASE_URL .. endpoint
@@ -567,9 +567,9 @@ function API:modifyGuildEmbed(guild_id, payload) -- not exposed, maybe in the fu
 	return self:request("PATCH", endpoint, payload)
 end
 
-function API:getInvite(invite_code) -- Client:getInvite
+function API:getInvite(invite_code, query) -- Client:getInvite
 	local endpoint = f(endpoints.INVITE, invite_code)
-	return self:request("GET", endpoint)
+	return self:request("GET", endpoint, nil, query)
 end
 
 function API:deleteInvite(invite_code) -- Invite:delete

@@ -1439,7 +1439,7 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 			while count>0 do
 				local len = #deletions
 				if len>count then
-					deletions = table.slice(deletions, len-count, len, 1)
+					deletions = table.slice(deletions, len-count+1, len, 1)
 					len = count
 				end
 				count = count - len
