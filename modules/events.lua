@@ -227,6 +227,7 @@ local function memberUpdate(member)
 end
 
 local function presenceUpdate(member)
+	if not _ready then return end
 	if member.user.bot == true then return end
 	-- Username logging
 	local users = modules.database:get(member, "Users")
