@@ -46,6 +46,7 @@ end
 --[[ Member Events ]]
 
 local function memberJoin(member)
+	if not _ready then return end
 	--Reference Hackban list
 	local hackbans = modules.database:get(member, "Hackbans")
 	if table.search(hackbans, member.id) then
@@ -92,18 +93,17 @@ local function memberJoin(member)
 		end
 	end
 	--Create user entry in DB
-	if member.guild.totalMemberCount<500 then --Temporary workaround until reql fixes its shit
-		local roles = {}
-		for role in member.roles:iter() do
-			table.insert(roles, role.id)
-		end
-		local users = modules.database:get(member, "Users")
-		users[member.id] = {nick=member.nickname, roles=roles, name=member.tag}
-		modules.database:update(member, "Users", users)
+	local roles = {}
+	for role in member.roles:iter() do
+		table.insert(roles, role.id)
 	end
+	local users = modules.database:get(member, "Users")
+	users[member.id] = {nick=member.nickname, roles=roles, name=member.tag}
+	modules.database:update(member, "Users", users)
 end
 
 local function memberLeave(member)
+	if not _ready then return end
 	local settings = modules.database:get(member, "Settings")
 	local logging = modules.database:get(member, "Logging")
 	local set = logging.memberLeave
@@ -157,6 +157,7 @@ local function memberLeave(member)
 end
 
 local function memberUpdate(member)
+	if not _ready then return end
 	local changed = false
 	local users = modules.database:get(member, "Users")
 	local settings = modules.database:get(member, "Settings")
@@ -213,20 +214,19 @@ local function memberUpdate(member)
 		end
 	end
 	if changed then
-		if member.guild.totalMemberCount<500 then
-			if users[member.id] then
-				users[member.id].nick = member.nickname
-				users[member.id].roles = newRoles
-				users[member.id].name = member.tag
-			else
-				users[member.id] = {nick = member.nickname, roles = newRoles, name = member.tag}
-			end
-			modules.database:update(member, "Users", users)
+		if users[member.id] then
+			users[member.id].nick = member.nickname
+			users[member.id].roles = newRoles
+			users[member.id].name = member.tag
+		else
+			users[member.id] = {nick = member.nickname, roles = newRoles, name = member.tag}
 		end
+		modules.database:update(member, "Users", users)
 	end
 end
 
 local function presenceUpdate(member)
+	if not _ready then return end
 	if member.user.bot == true then return end
 	-- Username logging
 	local users = modules.database:get(member, "Users")
@@ -359,6 +359,7 @@ local function messageCreate(msg)
 end
 
 local function messageDelete(message)
+	if not _ready then return end
 	for i,v in ipairs(bulkDeletes) do
 		if message.id==v then
 			table.remove(bulkDeletes,i)
@@ -391,6 +392,7 @@ local function messageDelete(message)
 end
 
 local function messageDeleteUncached(channel, messageID)
+	if not _ready then return end
 	for i,v in ipairs(bulkDeletes) do
 		if messageID==v then
 			table.remove(bulkDeletes,i)
@@ -415,6 +417,7 @@ local function messageDeleteUncached(channel, messageID)
 end
 
 local function messageUpdate(message)
+	if not _ready then return end
 	if message.author.bot then return end
 	if not message.oldContent then return end
 	local logging = modules.database:get(message, "Logging")
@@ -443,6 +446,7 @@ end
 --[[ User Events ]]
 
 local function userBan(user, guild)
+	if not _ready then return end
 	if guild.me and not guild.me:hasPermission(discordia.enums.permission.viewAuditLog) then return end
 	local logging = modules.database:get(guild, "Logging")
 	local set = logging.userBan
@@ -473,6 +477,7 @@ local function userBan(user, guild)
 end
 
 local function userUnban(user, guild)
+	if not _ready then return end
 	local logging = modules.database:get(guild, "Logging")
 	local set = logging.userUnban
 	if set and not set.disable or not set then
@@ -533,6 +538,7 @@ local function timing(data)
 end
 
 local function raw(r)
+	if not _ready then return end
 	local payload = json.parse(r)
 	if payload.t == 'MESSAGE_DELETE_BULK' then
 		bulkDeletes = payload.d.ids or {}
