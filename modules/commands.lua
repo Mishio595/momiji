@@ -1408,6 +1408,8 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 	local filter
 	if fsel=="bot" then
 		filter = function(m) return m.author.bot==true end
+	elseif fsel=="mention" then
+		filter = function(m) return #m.mentionedUsers>0 end
 	elseif getIdFromString(fsel) then
 		local member = resolveMember(guild, fsel)
 		filter = function(m) return m.author.id==member.id end
@@ -1420,38 +1422,29 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 	if count > 0 then
 		message:delete()
 		local xHun, rem = math.floor(count/100), count%100
-		local deletions
-		if not filter then
-			if xHun > 0 then
-				for i=1, xHun do --luacheck: ignore i
-					deletions = message.channel:getMessages(100)
-					local success = message.channel:bulkDelete(deletions)
-					if success then numDel = numDel+#deletions end
-				end
+		local deletions = channel:getMessages(100):toArray("createdAt", filter)
+		local nextDeletions
+		while count>0 do
+			local len = #deletions
+			if len>count then
+				deletions = table.slice(deletions, len-count+1, len, 1)
+				len = count
 			end
-			if rem > 0 then
-				deletions = message.channel:getMessages(rem)
-				local success = message.channel:bulkDelete(deletions)
-				if success then numDel = numDel+#deletions end
+			count = count - len
+			if count>0 then
+				nextDeletions = channel:getMessagesBefore(deletions[1], 100):toArray("createdAt", filter)
+			else
+				nextDeletions = nil
 			end
-		else
-			deletions = channel:getMessages(100):toArray("createdAt", filter)
-			while count>0 do
-				local len = #deletions
-				if len>count then
-					deletions = table.slice(deletions, len-count+1, len, 1)
-					len = count
-				end
-				count = count - len
-				local nextDeletions = channel:getMessagesBefore(deletions[1], 100):toArray("createdAt", filter)
-				local success = channel:bulkDelete(deletions)
-				if success then
-					numDel = numDel+len
-				else
-					break
-				end
-				deletions = nextDeletions
+			if not nextDeletions or #nextDeletions<=0 then nextDeletions = nil end
+			local success = channel:bulkDelete(deletions)
+			if success then
+				numDel = numDel+len
+			else
+				break
 			end
+			deletions = nextDeletions
+			if not deletions then break end
 		end
 		if settings.modlog and settings.modlog_channel then
 			guild:getChannel(settings.modlog_channel):send{embed={
