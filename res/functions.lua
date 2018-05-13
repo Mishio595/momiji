@@ -1,5 +1,9 @@
+local fmt = string.format
+
+local t = {}
+
 -- Traverses a table and returns an iterator sorted by keys
-local function pairsByKeys (t, f)
+function t.pairsByKeys (t, f)
 	local a = {}
 	for n in pairs(t) do table.insert(a, n) end
 	table.sort(a, f)
@@ -16,7 +20,7 @@ local function pairsByKeys (t, f)
 end
 
 --Type checking function, useful when strict typing is needed
-local function checkArgs(types, vals)
+function t.checkArgs(types, vals)
 	for i,v in ipairs(types) do
 		if type(v)=='table' then
 			local t1=true
@@ -38,44 +42,44 @@ local function checkArgs(types, vals)
 end
 
 -- This is shit, please fix
-local function humanReadableTime(table)
+function t.humanReadableTime(table)
 	local days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 	local months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
 	if #tostring(table.min) == 1 then table.min = "0"..table.min end
 	if #tostring(table.hour) == 1 then table.hour = "0"..table.hour end
-	return days[table.wday]..", "..months[table.month].." "..table.day..", "..table.year.." at "..table.hour..":"..table.min or table
+	return fmt("%s, %s %s, %s at %s:%s", days[table.wday], months[table.month], table.day, table.year, table.hour, table.min) or table
 end
 
 -- Given a Lua date time table, create a string with the values and keys
-local function prettyTime(t)
+function t.prettyTime(t)
 	local order = {days = "day", hours = "hour", minutes = "minute", seconds = "second"}
-	local out = ""
+	local out = {}
 	for k,v in pairsByKeys(order) do
 		if t[k] then
 			if t[k]==1 then
-				out = out~="" and out..", "..t[k].." "..v or t[k].." "..v
+				table.insert(out, fmt("%s %s", t[k], v))
 			elseif t[k]~=0 then
-				out = out~="" and out..", "..t[k].." "..v.."s" or t[k].." "..v.."s"
+				table.insert(out, fmt("%s %ss", t[k], v))
 			end
 		end
 	end
-	return out
+	return table.concat(out, ", ")
 end
 
 -- Tries to find a Discord snowflake in the given string, returning it if one is found. returns nil on failure
-local function getIdFromString(str)
+function t.getIdFromString(str)
 	local d = string.match(tostring(str),"<?[@#]?!?(%d+)>?")
 	if d and #d>=17 then return d else return end
 end
 
 -- Used in message formatting, purely matches "$type:(capture)" and returns the capture group
-local function getFormatType(str)
+function t.getFormatType(str)
 	local type = str:match("$type:(%S*)")
 	return type
 end
 
 -- Searches a string for known replacements and replaces them
-local function formatMessageSimple(str, member)
+function t.formatMessageSimple(str, member)
 	for word, opt in string.gmatch(str, "{([^:{}]+):?([^:{}]*)}") do
 		if word:lower()=='user' then
 			if opt~="" then
@@ -95,7 +99,7 @@ local function formatMessageSimple(str, member)
 end
 
 -- Also black magic fuckery, but I vaguely understand how this works
-local function getSwitches(str)
+function t.getSwitches(str)
     local t = {}
 	str = str:gsub("\\/", "—") --Use a better method to escape than substitution you dumb cunt
 	t.rest = str:match("^([^/]*)/?"):trim()
@@ -108,20 +112,22 @@ local function getSwitches(str)
     return t
 end
 
+function t.bold(str)
+	return fmt("**%s**", str)
+end
+
+function t.italic(str)
+	return fmt("*%s*", str)
+end
+
+function t.underline(str)
+	return fmt("__%s__", str)
+end
+
 return function()
-	local functions = {
-		checkArgs = checkArgs,
-		humanReadableTime = humanReadableTime,
-		prettyTime = prettyTime,
-		pairsByKeys = pairsByKeys,
-		getIdFromString = getIdFromString,
-		getFormatType = getFormatType,
-		formatMessageSimple = formatMessageSimple,
-		getSwitches = getSwitches,
-	}
 	-- Load this shit to global fam
-	for k,v in pairs(functions) do
+	for k,v in pairs(t) do
 		_G[k] = v
 	end
-	return functions
+	return t
 end

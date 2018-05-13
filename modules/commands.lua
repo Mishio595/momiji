@@ -4,6 +4,7 @@ local ffi = require("ffi")
 local fs = require('fs')
 local colors = require('./res/colors')
 local enums = discordia.enums
+local fmt = string.format
 local commands = {}
 
 -- addCommand adapted from DannehSC/Electricity-2.0
@@ -49,12 +50,12 @@ addCommand('Color', 'Display the closest named color to a given hex value', {'co
 	local ntc = require('./res/ntc')
 	if #hex==6 then
 		local color,name = ntc.name(hex)
-		local image1, image2 = "http://www.colorhexa.com/"..hex:lower()..".png", "http://www.colorhexa.com/"..color:lower()..".png"
+		local image1, image2 = fmt("http://www.colorhexa.com/%s.png", hex:lower()), fmt("http://www.colorhexa.com/%s.png", color:lower())
 		message.channel:broadcastTyping()
 		-- easiest way to pull the images to local
 		os.execute("wget "..image1)
 		os.execute("wget "..image2)
-		os.execute("montage -geometry 150x200 "..hex:lower()..".png".. " "..color:lower()..".png".." final.png")
+		os.execute(fmt("montage -geometry 150x200 %s.png %s.png final.png", hex:lower(), color:lower()))
 		fs.exists("final.png", function(err)
 			if not err then
 				message:reply{
@@ -72,7 +73,7 @@ addCommand('Color', 'Display the closest named color to a given hex value', {'co
 				message:reply{
 					content = "Unable to generate montage",
 					embed = {
-						image = { url = "http://www.colorhexa.com/"..color:lower()..".png"},
+						image = { url = fmt("http://www.colorhexa.com/%s.png", color:lower()) },
 						fields = {
 							{ name = name, value = "#"..color},
 						},
@@ -91,7 +92,7 @@ addCommand('Danbooru', 'Posts a random image from danbooru with optional tags', 
 		message:reply("This command can only be used in NSFW channels.")
 		return
 	end
-	local blacklist = {} --make the blacklist
+	local blacklist = {'loli'} --make the blacklist
 	for _,v in ipairs(blacklist) do
 		if args:match(v) then
 			message:reply("A tag you searched for is blacklisted: "..v)
@@ -114,13 +115,13 @@ addCommand('Danbooru', 'Posts a random image from danbooru with optional tags', 
 		end
 		count = count+1
 		if count >= 5 then
-			message:reply("Unable to find results after "..count.." attempts")
+			message:reply(fmt("Unable to find results after %d attempts",count))
 			return
 		end
 	end
 	message:reply{embed={
 		image={url=data.file_url:startswith("http") and data.file_url or "https://danbooru.donmai.us"..data.file_url},
-		description=string.format("**Tags:** %s\n**Post:** [%s](%s)\n**Uploader:** %s\n**Score:** %s", data.tag_string:gsub('%_','\\_'):gsub(' ',', '), data.id, "https://danbooru.donmai.us/posts/"..data.id, data.uploader_name, data.up_score-data.down_score)
+		description=fmt("**Tags:** %s\n**Post:** [%s](%s)\n**Uploader:** %s\n**Score:** %s", data.tag_string:gsub('%_','\\_'):gsub(' ',', '), data.id, "https://danbooru.donmai.us/posts/"..data.id, data.uploader_name, data.up_score-data.down_score)
 	}}
 end)
 
@@ -161,13 +162,13 @@ addCommand('E621', 'Posts a random image from e621 with optional tags', 'e621', 
 		end
 		count = count+1
 		if count >= 5 then
-			message:reply("Unable to find results after "..count.." attempts")
+			message:reply(fmt("Unable to find results after %d attempts", count))
 			return
 		end
 	end
 	message:reply{embed={
 		image={url=data.file_url},
-		description=string.format("**Tags:** %s\n**Post:** [%s](%s)\n**Author:** %s\n**Score:** %s", data.tags:gsub('%_','\\_'):gsub(' ',', '), data.id, "https://e621.net/post/show/"..data.id, data.author, data.score)
+		description=fmt("**Tags:** %s\n**Post:** [%s](%s)\n**Author:** %s\n**Score:** %s", data.tags:gsub('%_','\\_'):gsub(' ',', '), data.id, "https://e621.net/post/show/"..data.id, data.author, data.score)
 	}}
 end)
 
@@ -181,28 +182,28 @@ addCommand('Help', 'Display help information', {'help', 'cmds', 'commands'}, '[c
 		for _,tbl in pairsByKeys(cmds) do
 			if not help[tbl.rank+1] then help[tbl.rank+1] = "" end
 			if type(tbl.commands)=='string' then
-				help[tbl.rank+1] = help[tbl.rank+1].."`"..tbl.name.." "..tbl.usage.."` - "..tbl.description.."\n"
+				help[tbl.rank+1] = fmt("%s`%s %s` - %s \n", help[tbl.rank+1], tbl.name, tbl.usage, tbl.description)
 			elseif type(tbl.commands)=='table' then
-				names = ""
+				names = {}
 				for _,v in pairs(tbl.commands) do
-					if names == "" then names = v else names = names.."|"..v end
+					table.insert(names, v)
 				end
-				help[tbl.rank+1] = help[tbl.rank+1].."`"..names.." "..tbl.usage.."` - "..tbl.description.."\n"
+				help[tbl.rank+1] = fmt("%s`%s %s` - %s \n", help[tbl.rank+1], table.concat(names, "|"), tbl.usage, tbl.description)
 			end
 		end
 		local sorted,c = {},1
 		for i,v in ipairs(order) do
-			if sorted[c] and #sorted[c]+string.len("**"..v.."**\n"..help[i]) >= 2000 then
+			if sorted[c] and string.len(table.concat(sorted[c], "\n")..fmt("%s\n%s", bold(v), help[i])) >= 2000 then
 				c = c+1
 			end
 			if not sorted[c] then
-				sorted[c] = ""
+				sorted[c] = {}
 			end
-			sorted[c] = sorted[c].."**"..v.."**\n"..help[i]
+			table.insert(sorted[c], fmt("%s\n%s", bold(v), help[i]))
 		end
 		local reply = message.author:send("**How to read this doc:**\nWhen reading the commands, arguments in angle brackets (`<>`) are mandatory\nwhile arguments in square brackets (`[]`) are optional.\nA pipe character `|` means or, so `a|b` means a **or** b.\nNo brackets should be included in the commands")
 		if reply then
-			for _,v in ipairs(sorted) do message.author:send(v) end
+			for _,v in ipairs(sorted) do message.author:send(table.concat(v, "\n")) end
 			message:reply("I've DM'd you the help page!")
 		else
 			message:reply("I couldn't DM you. Please check your privacy settings.")
@@ -222,15 +223,15 @@ addCommand('Help', 'Display help information', {'help', 'cmds', 'commands'}, '[c
 			end
 		end
 		if cmd then
-			names = ""
-			for _,v in pairs(cmd.commands) do
-				if names == "" then names = v else names = names.."|"..v end
+			names = {}
+			for _,v in pairs(tbl.commands) do
+				table.insert(names, v)
 			end
 			message:reply {embed={
 				title = cmd.name,
 				description = cmd.description,
 				fields = {
-					{name = "Usage", value = names.." "..cmd.usage},
+					{name = "Usage", value = fmt("%s %s", table.concat(names, "|"), cmd.usage)},
 					{name = "Rank required", value = order[cmd.rank+1]},
 				},
 			}}
@@ -255,7 +256,7 @@ addCommand('MAL Anime Search', "Search MyAnimeList for an anime", 'anime', '<sea
 			for k,v in pairs(substitutions) do
 				syn = string.gsub(syn,k,v)
 			end
-			t.description=string.format("**[%s](https://myanimelist.net/anime/%s)**\n%s\n\n**Episodes:** %s\n**Score:** %s\n**Status: ** %s",result.title:value(),result.id:value(),syn,result.episodes:value(),result.score:value(),result.status:value())
+			t.description=fmt("**[%s](https://myanimelist.net/anime/%s)**\n%s\n\n**Episodes:** %s\n**Score:** %s\n**Status: ** %s",result.title:value(),result.id:value(),syn,result.episodes:value(),result.score:value(),result.status:value())
 			t.thumbnail={url=result.image:value()}
 		else
 			t.title="No results found for search "..args
@@ -278,7 +279,7 @@ addCommand('MAL Manga Search', "Search MyAnimeList for a manga", 'manga', '<sear
 			for k,v in pairs(substitutions) do
 				syn = string.gsub(syn,k,v)
 			end
-			t.description=string.format("**[%s](https://myanimelist.net/manga/%s)**\n%s\n\n**Volumes:** %s\n**Chapters:** %s\n**Score:** %s\n**Status: ** %s",result.title:value(),result.id:value(),syn,result.volumes:value(),result.chapters:value(),result.score:value(),result.status:value())
+			t.description=fmt("**[%s](https://myanimelist.net/manga/%s)**\n%s\n\n**Volumes:** %s\n**Chapters:** %s\n**Score:** %s\n**Status: ** %s",result.title:value(),result.id:value(),syn,result.volumes:value(),result.chapters:value(),result.score:value(),result.status:value())
 			t.thumbnail={url=result.image:value()}
 		else
 			t.title="No results found for search "..args
@@ -304,7 +305,7 @@ addCommand('Nerdy info', 'Info for nerds.', {'ninfo','ni','nerdyinfo'}, '', 0, f
 			{name = 'OS', value = ts(ffi.os)},
 			{name = 'CPU Threads', value = ts(threads)},
 			{name = 'CPU Model', value = ts(cpumodel)},
-			{name = 'Memory usage', value = ts(mem)..' MB '.."("..ts(math.round(mem/#client.guilds*100)/100).." MB/guild)"},
+			{name = 'Memory usage', value = fmt("%s MB (%s MB/guild)", ts(mem), ts(math.round(mem/#client.guilds*100)/100))},
 			{name = 'Uptime', value = uptime}
 		},
 	}}
@@ -313,13 +314,13 @@ end)
 addCommand('Ping', 'Ping!', 'ping', '', 0, false, false, false, function(message)
 	local response = message:reply("Pong!")
 	if response then
-		response:setContent("Pong!".."`"..math.abs(math.round((response.createdAt - message.createdAt)*1000)).." ms`")
+		response:setContent(fmt("Pong! `%s`", math.abs(math.round((response.createdAt - message.createdAt)*1000))))
 	end
 end)
 
 addCommand('Prefix', 'Show the prefix for the guild', 'prefix', '', 0, false, false, true, function(message)
 	local settings = modules.database:get(message, "Settings")
-	message:reply("The prefix for "..message.guild.name.." is `"..settings.prefix.."`")
+	message:reply(fmt("The prefix for %s is `%s`", message.guild.name, settings.prefix))
 end)
 
 addCommand('Remind Me', 'Make a reminder!', {'remindme', 'remind'}, '<reminder text> </t time>', 0, false, true, false, function(message, args)
@@ -370,18 +371,17 @@ addCommand('Add Self Role', 'Add role(s) to yourself from the self role list', {
 			end
 		else rolesFailed[#rolesFailed+1] = "You already have "..role end
 	end
-	local desc = ""
+	local desc = {}
 	if #rolesAdded > 0 then
-		desc = desc.."**Added "..member.mentionString.." to the following roles** \n"..table.concat(rolesAdded,"\n")
+		table.insert(desc, fmt("**Added %s to the following roles**\n %s", member.mentionString, table.concat(rolesAdded,"\n")))
 	end
 	if #rolesFailed > 0 then
-		local val = "**Failed to add "..member.mentionString.." to the following roles**\n"..table.concat(rolesFailed,"\n")
-		desc = desc~="" and desc.."\n\n"..val or val
+		table.insert(desc, fmt("**Failed to add %s to the following roles**\n %s", member.mentionString, table.concat(rolesFailed,"\n")))
 	end
-	if desc~="" then
+	if next(desc)~=nil then
 		message.channel:send{embed={
 			author = {name = "Add Self Role Summary", icon_url = member.avatarURL},
-			description = desc,
+			description = table.concat(desc, "\n"),
 			color = member:getColor().value,
 			timestamp = discordia.Date():toISO(),
 			footer = {text = "ID: "..member.id}
@@ -406,18 +406,18 @@ addCommand('Remove Self Role', 'Remove role(s) from the self role list from your
 			end
 		end
 	end
-	local roleList = ""
+	local roleList = {}
 	for _,role in ipairs(rolesToRemove) do
 		local r = member.guild.roles:find(function(r) return r.name == role end)
 		if member:removeRole(r) then
-			roleList = roleList..role.."\n"
+			table.insert(roleList, role)
 		end
 	end
-	if #rolesToRemove > 0 then
+	if next(roleList)~=nil then
 		message.channel:send {
 			embed = {
 				author = {name = "Roles Removed", icon_url = member.avatarURL},
-				description = "**Removed "..member.mentionString.." from the following roles** \n"..roleList,
+				description = fmt("**Removed %s from the following roles**\n%s", member.mentionString, table.concat(roleList, "\n")),
 				color = member:getColor().value,
 				timestamp = discordia.Date():toISO(),
 				footer = {text = "ID: "..member.id}
@@ -438,34 +438,31 @@ addCommand('List Self Roles', 'List all roles in the self role list', 'roles', '
 			if args:lower()==k:lower() then
 				for r in pairsByKeys(v) do
 					if not roleList[k] then
-						roleList[k] = r.."\n"
-					else
-						roleList[k] = roleList[k]..r.."\n"
+						roleList[k] = {}						
 					end
+					table.insert(roleList[k], r)
 				end
-				table.insert(cats, {name = k, value = roleList[k], inline = true})
+				table.insert(cats, {name = k, value = table.concat(roleList[k],"\n"), inline = true})
 				found = true
 			end
 		end
 		if not found then
-			message.channel:sendf("None of those matched a category. Did you mean to do `role %s`?", args)
-			return
+			return message.channel:sendf("None of those matched a category. Did you mean to do `role %s`?", args)
 		end
 	else
 		for k,v in pairs(selfRoles) do
 			for r in pairsByKeys(v) do
 				if not roleList[k] then
-					roleList[k] = r.."\n"
-				else
-					roleList[k] = roleList[k]..r.."\n"
+					roleList[k] = {}						
 				end
+				table.insert(roleList[k], r)
 			end
-			table.insert(cats, {name = k, value = roleList[k], inline = true})
+			table.insert(cats, {name = k, value = table.concat(roleList[k],"\n"), inline = true})
 		end
 	end
 	message.channel:send {
 		embed = {
-			author = {name = "Self-Assignable Roles", icon_url = message.guild.iconURL},
+			title = "Self-Assignable Roles",
 			fields = cats,
 		}
 	}
@@ -497,7 +494,7 @@ addCommand('Role Info', "Get information on a role", {'roleinfo', 'ri', 'rinfo'}
 		if role.hoisted then hoisted = "Yes" else hoisted = "No" end
 		if role.mentionable then mentionable = "Yes" else mentionable = "No" end
 		local embed = {
-			thumbnail = {url = "http://www.colorhexa.com/"..hex:lower()..".png", height = 150, width = 150},
+			thumbnail = {url = fmt("http://www.colorhexa.com/%s.png", hex:lower())},
 			fields = {
 				{name = "Name", value = role.name, inline = true},
 				{name = "ID", value = role.id, inline = true},
@@ -529,7 +526,7 @@ addCommand('Roll', 'Roll X N-sided dice', 'roll', '<XdN>', 0, false, false, fals
 		end
 		message.channel:send{embed={
 			fields={
-				{name=string.format("%d 🎲 [1—%d]",count, sides), value=string.format("You rolled **%s** = **%d**",table.concat(pretty,","),roll)},
+				{name=string.format("%d 🎲 [1—%d]",count, sides), value=fmt("You rolled **%s** = **%d**",table.concat(pretty,","),roll)},
 			},
 			color = colors.blue.value,
 		}}
@@ -543,29 +540,27 @@ addCommand('Server Info', "Get information on the server", {'serverinfo','si', '
 		guild = g
 	end
 	if args.roles then
-		local roles = {}
-		for _,r in pairs(guild.roles:toArray("position")) do
+		local roles, t = {}, guild.roles:toArray("position")
+		table.reverse(t)
+		for _,r in pairs(t) do
 			table.insert(roles, r.name)
 		end
 		local result, count = {}, 1
 		for _,v in ipairs(roles) do
-			if not result[count] then result[count] = "" end
-			if #result[count] < 1950 then
-				result[count] = result[count]=="" and result[count]..v or result[count]..", "..v
-			else
+			if result[count] and #table.concat(result[count], "\n") > 1950 then
 				count = count+1
-				result[count] = ""
-				result[count] = result[count]=="" and result[count]..v or result[count]..", "..v
 			end
+			if not result[count] then result[count] = {} end
+			table.insert(result[count], v)
 		end
 		message:reply{embed={
 			title = "Roles for "..guild.name..". Count: "..#guild.roles,
-			description = result[1] or "None"
+			description = next(result[1]) and table.concat(result[1],"\n") or "None"
 		}}
-		for i in pairs(result) do
+		for i in ipairs(result) do
 			if i>1 then
 				message:reply{embed={
-					description = result[i]
+					description = table.concat(result[i],"\n")
 				}}
 			end
 		end
@@ -588,16 +583,16 @@ addCommand('Server Info', "Get information on the server", {'serverinfo','si', '
 		{name = 'Name', value = guild.name, inline = true},
 		{name = 'Owner', value = guild.owner.mentionString, inline = true},
 		{name = 'Region', value = guild.region, inline = true},
-		{name = 'Channels ['..#guild.textChannels+#guild.voiceChannels+#guild.categories..']', value = "Text: "..#guild.textChannels.."\nVoice: "..#guild.voiceChannels.."\nCategories: "..#guild.categories, inline = true},
-		{name = 'Members ['..online.."/"..#guild.members..']', value = "Humans: "..humans.."\nBots: "..bots, inline = true},
+		{name = fmt('Channels [%d]', #guild.textChannels+#guild.voiceChannels+#guild.categories), value = fmt("Text: %d\nVoice: %d\nCategories: %d", #guild.textChannels, #guild.voiceChannels, #guild.categories), inline = true},
+		{name = fmt('Members [%d/%d]', online, #guild.members), value = fmt("Humans: %d\nBots: %s", humans, bots), inline = true},
 		{name = 'Roles', value = #guild.roles, inline = true},
 		{name = 'Emojis', value = #guild.emojis, inline = true},
 	}
 	message:reply {
 		embed = {
-			author = {name = guild.name, icon_url = guild.iconURL},
+			title = guild.name,
 			fields = fields,
-			thumbnail = {url = guild.iconURL, height = 200, width = 200},
+			thumbnail = {url = guild.iconURL},
 			color = colors.blue.value,
 			footer = { text = "Server Created : "..timestamp }
 		}
@@ -669,7 +664,7 @@ addCommand('User Info', "Get information on a user", {'userinfo','ui', 'uinfo'},
 		table.insert(fields, {name = 'Roles ('..#member.roles..')', value = roles, inline = false})
 		message.channel:send {
 			embed = {
-				author = {name = member.username.."#"..member.discriminator, icon_url = member.avatarURL},
+				author = {name = member.tag, icon_url = member.avatarURL},
 				fields = fields,
 				thumbnail = {url = member.avatarURL, height = 200, width = 200},
 				color = member:getColor().value,
@@ -747,7 +742,7 @@ addCommand('Mod Info', "Get mod-related information on a user", {'mi','modinfo',
 			end
 			table.insert(caseList, 1, {name = "Watchlisted", value = watchlisted, inline = false})
 			message:reply {embed={
-				author = {name = m.username.."#"..m.discriminator, icon_url = m.avatarURL},
+				author = {name = m.tag, icon_url = m.avatarURL},
 				fields = caseList,
 				color = m:getColor().value,
 				timestamp = discordia.Date():toISO()
@@ -804,8 +799,7 @@ end)
 addCommand('Unmute', 'Unmutes a user', 'unmute', '<@user|userID>', 1, false, false, true, function(message, args)
 	local settings = modules.database:get(message, "Settings")
 	if not settings.mute_setup then
-		message:reply("Unmute cannot be used until `setup` has been run.")
-		return
+		return message:reply("Unmute cannot be used until `setup` has been run.")
 	end
 	local member = resolveMember(message.guild, args)
 	if member then
@@ -830,7 +824,7 @@ addCommand('Unmute', 'Unmutes a user', 'unmute', '<@user|userID>', 1, false, fal
 	end
 end)
 
-addCommand('Notes', 'Add the note to, delete a note from, or view all notes for the mentioned user', 'note', '<add|del|view> [@user|userID] [note|index]', 1, false, false, true, function(message, args)
+addCommand('Notes', 'Add the note to, delete a note from, or view all notes for the mentioned user', 'note', '<add|del|list> [@user|userID] [note|index]', 1, false, false, true, function(message, args)
 	local a = message.member or message.guild:getMember(message.author.id)
 	local m = resolveMember(message.guild, args)
 	if (args == "") or not m then return end
@@ -858,19 +852,19 @@ addCommand('Notes', 'Add the note to, delete a note from, or view all notes for 
 			end
 		end
 		modules.database:update(message, "Notes", notes)
-	elseif args:startswith("view") then
-		local notelist = ""
+	elseif args:startswith("list") then
+		local notelist = {}
 		if notes[m.id] then
 			for i,v in ipairs(notes[m.id]) do
-				notelist = notelist..string.format("**%d)** %s (Added by %s)\n",i,v.note,v.moderator)
+				table.insert(notelist, string.format("**%d)** %s (Added by %s)",i,v.note,v.moderator))
 			end
 		end
 		message:reply {embed={
 			title = "Notes for "..m.tag,
-			description = notelist,
+			description = table.concat(notelist,"\n"),
 		}}
 	else
-		message:reply("Please specify add, del, or view")
+		message:reply("Please specify add, del, or list")
 	end
 end)
 
@@ -903,11 +897,11 @@ addCommand('Register', 'Register a given user with the listed roles', {'reg', 'r
 			end
 		end
 		if hasGender and hasPronouns then
-			local roleList = ""
+			local roleList = {}
+			local function fn(r) return r.name == role end
 			for _,role in pairs(rolesToAdd) do
-				function fn(r) return r.name == role end
 				if member:addRole(member.guild.roles:find(fn)) then
-					roleList = roleList..role.."\n"
+					table.insert(roleList, role)
 				end
 			end
 			if message.guild.id==knownGuilds.TRANSCEND then
@@ -915,12 +909,12 @@ addCommand('Register', 'Register a given user with the listed roles', {'reg', 'r
 			elseif message.guild.id == '407926063281209344' then
 				member:addRole('409109782612672513')
 			end
-			if #rolesToAdd > 0 then
+			if next(roleList)~=nil then
 				if channel then
 					channel:send {
 						embed = {
 							author = {name = "Registered", icon_url = member.avatarURL},
-							description = "**Registered "..member.mentionString.." with the following roles** \n"..roleList,
+							description = fmt("**Registered %s with the following roles**\n%s", member.mentionString, table.concat(roleList,"\n")),
 							color = member:getColor().value,
 							timestamp = discordia.Date():toISO(),
 							footer = {text = "ID: "..member.id}
@@ -961,7 +955,7 @@ addCommand('Add Role', 'Add role(s) to the given user', 'ar', '<@user|userID> <r
 						rolesToAdd[#rolesToAdd+1] = r.name
 					end
 				else
-					rolesToAdd[#rolesToAdd+1] = member.tag.." already has "..r.name
+					rolesToAdd[#rolesToAdd+1] = fmt("%s already has %s", member.tag, r.name)
 				end
 			end
 		end
@@ -969,7 +963,7 @@ addCommand('Add Role', 'Add role(s) to the given user', 'ar', '<@user|userID> <r
 			message.channel:send {
 				embed = {
 					author = {name = "Roles Added", icon_url = member.avatarURL},
-					description = "**Added "..member.mentionString.." to the following roles** \n"..table.concat(rolesToAdd,"\n"),
+					description = fmt("**Added %s to the following roles**\n%s", member.mentionString, table.concat(rolesToAdd,"\n")),
 					color = member:getColor().value,
 					timestamp = discordia.Date():toISO(),
 					footer = {text = "ID: "..member.id}
@@ -996,7 +990,7 @@ addCommand('Remove Role', 'Removes role(s) from the given user', 'rr', '<@user|u
 						rolesToRemove[#rolesToRemove+1] = r.name
 					end
 				else
-					rolesToRemove[#rolesToRemove+1] = member.tag.." does not have "..r.name
+					rolesToRemove[#rolesToRemove+1] = fmt("%s does not have %s", member.tag, r.name)
 				end
 			end
 		end
@@ -1004,7 +998,7 @@ addCommand('Remove Role', 'Removes role(s) from the given user', 'rr', '<@user|u
 			message.channel:send {
 				embed = {
 					author = {name = "Roles Removed", icon_url = member.avatarURL},
-					description = "**Removed "..member.mentionString.." from the following roles** \n"..table.concat(rolesToRemove,"\n"),
+					description = fmt("**Removed %s from the following roles**\n%s", member.mentionString, table.concat(rolesToRemove,"\n")),
 					color = member:getColor().value,
 					timestamp = discordia.Date():toISO(),
 					footer = {text = "ID: "..member.id}
@@ -1031,7 +1025,7 @@ addCommand('Role Color', 'Change the color of a role', {'rolecolor', 'rolecolour
 	end
 end)
 
-addCommand('Watchlist', "Add/remove someone from the watchlist or view everyone on it", "wl", '<add|remove|list> [@user|userID]', 1, false, false, true, function(message, args)
+addCommand('Watchlist', "Add/remove someone from the watchlist or view everyone on it", "wl", '<add|del|list> [@user|userID]', 1, false, false, true, function(message, args)
 	local users = modules.database:get(message, "Users")
 	local member = resolveMember(message.guild, args)
 	args = args:gsub("<@!?%d+>",""):gsub(member and member.id or "",""):trim():split(' ')
@@ -1043,7 +1037,7 @@ addCommand('Watchlist', "Add/remove someone from the watchlist or view everyone 
 		end
 		message.channel:sendf("Added %s to the watchlist",member.mentionString)
 		modules.database:update(message, "Users", users)
-	elseif args[1] == 'remove' then
+	elseif args[1] == 'del' then
 		local oldS = false
 		if member and users[member.id] then
 			if users[member.id].watchlisted==true then
@@ -1058,17 +1052,21 @@ addCommand('Watchlist', "Add/remove someone from the watchlist or view everyone 
 		end
 		modules.database:update(message, "Users", users)
 	elseif args[1] == 'list' then
-		local list, mention = ""
+		local list, mention = {}
 		for id,v in pairs(users) do
 			if v and v.watchlisted then
 				mention = message.guild:getMember(id) or client:getUser(id)
-				list = type(mention)=='table' and list..string.format("%s (%s)\n", mention.tag, mention.id) or list..id.."\n"
+				if type(mention)=='table' then
+					table.insert(list, fmt("%s (%s)", mention.tag, mention.id))
+				else
+					table.insert(list, id)
+				end
 			end
 		end
 		if list ~= "" then
 			message:reply {embed={
 				title="Watchlist",
-				description=list,
+				description=table.concat(list, "\n"),
 			}}
 		end
 	end
@@ -1257,7 +1255,7 @@ addCommand('Config', 'Update configuration for the current guild', 'config', 'se
 		end
 		modules.database:update(message, "Logging", logging)
 	elseif not s or s=="" then
-		local list = ""
+		local list = {}
 		for k,v in pairsByKeys(table.deepcopy(settings)) do
 			if type(v)=='table' and k:match('roles') then
 				for i,j in ipairs(v) do
@@ -1270,14 +1268,14 @@ addCommand('Config', 'Update configuration for the current guild', 'config', 'se
 				v = c and c.mentionString or v
 			end
 			local out = type(v)=='table' and table.concat(v,', ') or tostring(v)
-			list = list.."**"..k.."**: "..out.."\n"
+			table.insert(list, fmt("**%s**: %s", k, out))
 		end
 		message:reply{embed={
-			description = list.."\n".."For details on config usage, run `"..settings.prefix.."config help`"
+			description = fmt("%s\n\nFor details on config usage, run `%sconfig help`", table.concat(list,"\n"), settings.prefix)
 		}}
 	end
 	if operation then
-		message.channel:sendf("**Operation:** %s\n%s%s", operation, section and "**Section:** "..section.."\n" or "",value and "**Value:** "..value or "")
+		message.channel:sendf("**Operation:** %s\n%s%s", operation, section and fmt("**Section:** %s\n", section) or "",value and fmt("**Value:** %s", value) or "")
 		if s~="logging" and s~="commands" and s~="help" then
 			modules.database:update(message, "Settings", settings)
 		end
@@ -1302,7 +1300,7 @@ addCommand('Hackban', 'Ban a user by ID before they even join', {'hackban', 'hb'
 		else
 			table.remove(hackbans, found)
 		end
-		message.channel:sendf("%s the hackban list. %s", found and "Removed ID "..id.." from" or "Added ID "..id.." to", not found and "If someone joins with this ID, they will be banned with reason \"Hackban.\"" or "")
+		message.channel:sendf("%s the hackban list. %s", found and fmt("Removed ID %s from", id) or fmt("Added ID %s to", id), not found and "If someone joins with this ID, they will be banned with reason \"Hackban.\"" or "")
 		modules.database:update(message, "Hackbans", hackbans)
 	else
 		message:reply("Unable to resolve ID from input.")
@@ -1325,17 +1323,16 @@ addCommand('Ignore', 'Ignores the given channel', 'ignore', '<channelID|link>', 
 	elseif channel then
 		ignores[channel.id] = nil
 	else
-		local r,c
+		local r,c = {}
 		for k,v in pairs(ignores) do
 			c = client:getChannel(k)
 			if not c then
 				ignores[k] = nil
 			else
-				r = string.format(r and r.."%s\n" or "".."%s\n",v and c.mentionString)
+				table.insert(r, v and c.mentionString)
 			end
 		end
-		message:reply(r)
-		return
+		return message:reply(table.concat(r, "\n"))
 	end
 	if channel then
 		message.channel:sendf("I will %s for commands in %s",ignores[channel.id] and "no longer listen" or "now listen",channel.mentionString)
@@ -1349,7 +1346,7 @@ addCommand('Make Role', 'Make a role for the rolelist', {'makerole','mr'}, 'role
 	if r then
 		for cat,v in pairs(roles) do
 			if v[r.name] then
-				return message:reply(r.name.." already exists in "..cat)
+				return message.channel:sendf("%s already exists in %s", r.name, cat)
 			end
 		end
 		local cat = args.c or "Default"
@@ -1367,9 +1364,9 @@ addCommand('Make Role', 'Make a role for the rolelist', {'makerole','mr'}, 'role
 			end
 		end
 		if next(aliases)==nil then
-			message:reply("Added "..r.name.." to "..cat)
+			message.channel:sendf("Added %s to %s", r.name, cat)
 		else
-			message:reply("Added "..r.name.." to "..cat.." with aliases "..table.concat(aliases,', '))
+			message.channel:sendf("Added %s to #s with aliases %s", r.name, cat, table.concat(aliases,', '))
 		end
 		modules.database:update(message, "Roles", roles)
 	else
@@ -1418,6 +1415,7 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 		return message:reply("The following filter is not valid: "..fsel)
 	end
 	count = tonumber(count)
+	if count>1000 then return message:reply("Please provide a number no larger than 1000") end
 	local numDel = 0
 	if count > 0 then
 		message:delete()
@@ -1456,6 +1454,8 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 		else
 			channel:sendf("Deleted %s messages", numDel)
 		end
+	else
+		message:reply("Cannot delete a negative number of messages")
 	end
 end)
 
@@ -1575,9 +1575,8 @@ addCommand('Lua', "Execute arbitrary lua code", "lua", '<code>', 4, false, false
 	for k,v in pairs(modules) do
 		env[k]=v
 	end
-	local a = loadstring(args)
+	local a = loadstring(args, nil, 't', env)
 	if a then
-		setfenv(a, env)
 		local s,ret = pcall(a)
 		if ret==nil then
 			ret = tx
@@ -1616,7 +1615,7 @@ addCommand('Reload', 'Reload a module', 'reload', '<module>', 4, false, false, f
 	local loaded = false
 	local path = "./modules/"
 	if args~="" then
-		path = path..args..".lua"
+		path = fmt("%s%s.lua", path, args)
 		unloadModule(args)
 		loaded = loadModule(path)
 	end
