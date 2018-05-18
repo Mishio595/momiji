@@ -41,7 +41,7 @@ local function dispatcher(name, ...)
 		if errLog then
 			client:getChannel(errLog):send {embed = {
 				description = err,
-				footer = {text="DISPATCHER: "..name.." "..tostring(args[1])},
+				footer = {text=string.format("DISPATCHER: %s %s", name, tostring(args[1]))},
 				timestamp = discordia.Date():toISO(),
 				color = discordia.Color.fromRGB(255, 0 ,0).value,
 			}}
@@ -107,7 +107,7 @@ local function resolveMember(guild,name)
 		m = guild:getMember(this)
 	else
 		m = guild.members:find(function(mem)
-			return string.lower(mem.name)==string.lower(name)
+			return string.lower(mem.nickname)==string.lower(name) or string.lower(mem.username)==string.lower(name)
 		end)
 	end
 	return m
@@ -130,7 +130,7 @@ end
 -- Black magic fuckery. Don't mess with this or everything breaks
 local function resolveCommand(str, prefix)
 	local command,rest
-	if string.match(str, "^<@!?"..client.user.id..">") then
+	if string.match(str, string.format("^<@!?%s>", client.user.id)) then
 		command, rest = str:sub(#client.user.mentionString+2):match('(%S+)%s*(.*)')
 	elseif (prefix~="" and string.match(str,"^%"..prefix)) or prefix=="" then
 		command, rest = str:sub(#prefix+1):match('(%S+)%s*(.*)')

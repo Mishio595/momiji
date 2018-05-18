@@ -74,9 +74,9 @@ local function memberJoin(member)
 	if set and not set.disable or not set then
 		--Join message
 		local t = timeBetween(discordia.Date.fromISO(member.timestamp))
-		local desc = member.mentionString.."\n"..member.tag
+		local desc = string.format("%s\n%s", member.mentionString, member.tag)
 		if t:toSeconds()<(60*60*24*7) then
-			desc = desc.."\nCreated "..prettyTime(t:toTable()).." ago"
+			desc = string.format("%s\nCreated %s ago", desc, prettyTime(t:toTable()))
 		end
 		local channel = member.guild:getChannel(settings.audit_channel)
 		if settings.audit and channel then
@@ -113,7 +113,7 @@ local function memberLeave(member)
 			channel:send {embed={
 				author = {name = "Member Left", icon_url = member.avatarURL},
 				description = member.mentionString.."\n"..member.tag,
-				thumbnail = {url = member.avatarURL, height = 200, width = 200},
+				thumbnail = {url = member.avatarURL},
 				color = colors.red.value,
 				timestamp = discordia.Date():toISO(),
 				footer = {text = "ID: "..member.id}
@@ -146,7 +146,7 @@ local function memberLeave(member)
 				channel:send{embed={
 					author = {name = "Member Kicked", icon_url = member.avatarURL},
 					description = string.format("%s\n%s\n**Responsible Moderator: ** %s\n**Reason:** %s", member.mentionString, member.tag, audit and audit:getMember().tag or "N/A", reason or "None"),
-					thumbnail = {url = member.avatarURL, height = 200, width = 200},
+					thumbnail = {url = member.avatarURL},
 					color = colors.red.value,
 					timestamp = discordia.Date():toISO(),
 					footer = {text = "ID: "..member.id}
@@ -302,8 +302,7 @@ local function messageCreate(msg)
 		for _,cmd in pairs(tab.commands) do
 			if command:lower() == cmd:lower() then
 				if tab.serverOnly and private then
-					msg:reply("This command is not available in private messages.")
-					return
+					return msg:reply("This command is not available in private messages.")
 				end
 				if not private then
 					if data.Commands[tab.name] then
@@ -340,9 +339,9 @@ local function messageCreate(msg)
 						local g = not private and msg.guild or {name="Private", id=""}
 						client:getChannel(comLog):send{embed={
 							fields={
-								{name="Guild",value=g.name.."\n"..g.id,inline=true},
-								{name="Author",value=msg.author.tag.."\n"..msg.author.id,inline=true},
-								{name="Channel",value=msg.channel.name.."\n"..msg.channel.id,inline=true},
+								{name="Guild",value=string.format("%s\n%s", g.name, g.id), inline=true},
+								{name="Author",value=string.format("%s\n%s", msg.author.tag, msg.author.id), inline=true},
+								{name="Channel",value=string.format("%s\n%s", msg.channel.name, msg.channel.id), inline=true},
 								{name="Command",value=tab.name,inline=true},
 								{name="Message Content",value=msg.cleanContent},
 							},
@@ -364,8 +363,7 @@ local function messageDelete(message)
 	if not _ready then return end
 	for i,v in ipairs(bulkDeletes) do
 		if message.id==v then
-			table.remove(bulkDeletes,i)
-			return
+			return table.remove(bulkDeletes,i)
 		end
 	end
 	local logging = modules.database:get(message, "Logging")
@@ -379,7 +377,7 @@ local function messageDelete(message)
 			local body = string.format("**Author:** %s (%s) - %s\n**Channel:** %s (%s) - %s\n**Content:**\n%s", member.tag, member.id, member.mentionString, message.channel.name, message.channel.id, message.channel.mentionString, message.content)
 			if message.attachments then
 				for i,t in ipairs(message.attachments) do
-					body = body.."\n[Attachment "..i.."]("..t.url..")"
+					body = string.format("%s\n[Attachment %s](%s)", body, i, t.url)
 				end
 			end
 			channel:send {embed={
@@ -397,8 +395,7 @@ local function messageDeleteUncached(channel, messageID)
 	if not _ready then return end
 	for i,v in ipairs(bulkDeletes) do
 		if messageID==v then
-			table.remove(bulkDeletes,i)
-			return
+			return table.remove(bulkDeletes,i)
 		end
 	end
 	local logging = modules.database:get(channel, "Logging")
@@ -469,7 +466,7 @@ local function userBan(user, guild)
 			channel:send{embed={
 				author = {name = "Member Banned", icon_url = member.avatarURL},
 				description = string.format("%s\n%s\n**Responsible Moderator: ** %s\n**Reason:** %s", member.mentionString, member.tag, audit and audit:getMember().tag or "N/A", reason or "None"),
-				thumbnail = {url = member.avatarURL, height = 200, width = 200},
+				thumbnail = {url = member.avatarURL},
 				color = colors.red.value,
 				timestamp = discordia.Date():toISO(),
 				footer = {text = "ID: "..member.id}
@@ -489,8 +486,8 @@ local function userUnban(user, guild)
 		if channel and member and settings.modlog then
 			channel:send {embed={
 				author = {name = "Member Unbanned", icon_url = member.avatarURL},
-				description = member.mentionString.."\n"..member.tag,
-				thumbnail = {url = member.avatarURL, height = 200, width = 200},
+				description = string.format("%s\n%s", member.mentionString, member.tag),
+				thumbnail = {url = member.avatarURL},
 				color = colors.green.value,
 				timestamp = discordia.Date():toISO(),
 				footer = {text = "ID: "..member.id}
@@ -510,7 +507,7 @@ local function timing(data)
 			local time = args[4]
 			if m then
 				m:send{embed={
-					title='Reminder from '..time..' ago',
+					title=string.format("Reminder from %s ago", time),
 					description=args[5],
 					color=colors.blue.value,
 				}}
@@ -528,8 +525,8 @@ local function timing(data)
 					g:getChannel(settings.modlog_channel):send{embed={
 						title = "Member Unmuted Automatically",
 						fields = {
-							{name = "Member", value = m.mentionString.."\n"..m.tag, inline = true},
-							{name = "Moderator", value = client.user.mentionString.."\n"..client.user.tag, inline = true},
+							{name = "Member", value = string.format("%s\n%s", m.mentionString, m.tag), inline = true},
+							{name = "Moderator", value = string.format("%s\n%s", client.user.mentionString, client.user.tag), inline = true},
 							{name = "Duration", value = time, inline = true},
 						}
 					}}
