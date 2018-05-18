@@ -1406,7 +1406,11 @@ addCommand('Prune', 'Bulk deletes messages', 'prune', '<count> [filter]', 2, fal
 	if fsel=="bot" then
 		filter = function(m) return m.author.bot==true end
 	elseif fsel=="mention" then
-		filter = function(m) return #m.mentionedUsers>0 end
+		filter = function(m) return #m.mentionedUsers>0 or m.mentionsEveryone end
+	elseif fsel=="attachment" then
+		filter = function(m) return m.attachments~=nil end
+	elseif fsel=="!pin" then
+		filter = function(m) return not m.pinned end
 	elseif getIdFromString(fsel) then
 		local member = resolveMember(guild, fsel)
 		filter = function(m) return m.author.id==member.id end

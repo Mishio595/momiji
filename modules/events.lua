@@ -1,5 +1,3 @@
---[[ Adapted from DannehSC/Electricity-2.0 ]]
-
 local json = require('json')
 local timer = require("timer")
 local enums = discordia.enums
@@ -93,13 +91,15 @@ local function memberJoin(member)
 		end
 	end
 	--Create user entry in DB
-	local roles = {}
-	for role in member.roles:iter() do
-		table.insert(roles, role.id)
+	if member.guild.totalMemberCount<500 then
+		local roles = {}
+		for role in member.roles:iter() do
+			table.insert(roles, role.id)
+		end
+		local users = modules.database:get(member, "Users")
+		users[member.id] = {nick=member.nickname, roles=roles, name=member.tag}
+		modules.database:update(member, "Users", users)
 	end
-	local users = modules.database:get(member, "Users")
-	users[member.id] = {nick=member.nickname, roles=roles, name=member.tag}
-	modules.database:update(member, "Users", users)
 end
 
 local function memberLeave(member)
@@ -213,15 +213,17 @@ local function memberUpdate(member)
 			end
 		end
 	end
-	if changed then
-		if users[member.id] then
-			users[member.id].nick = member.nickname
-			users[member.id].roles = newRoles
-			users[member.id].name = member.tag
-		else
-			users[member.id] = {nick = member.nickname, roles = newRoles, name = member.tag}
+	if member.guild.totalMemberCount<500 then
+		if changed then
+			if users[member.id] then
+				users[member.id].nick = member.nickname
+				users[member.id].roles = newRoles
+				users[member.id].name = member.tag
+			else
+				users[member.id] = {nick = member.nickname, roles = newRoles, name = member.tag}
+			end
+			modules.database:update(member, "Users", users)
 		end
-		modules.database:update(member, "Users", users)
 	end
 end
 
