@@ -898,9 +898,8 @@ addCommand('Register', 'Register a given user with the listed roles', {'reg', 'r
 		end
 		if hasGender and hasPronouns then
 			local roleList = {}
-			local function fn(r) return r.name == role end
 			for _,role in pairs(rolesToAdd) do
-				if member:addRole(member.guild.roles:find(fn)) then
+				if member:addRole(resolveRole(member.guild, role)) then
 					table.insert(roleList, role)
 				end
 			end
@@ -909,7 +908,7 @@ addCommand('Register', 'Register a given user with the listed roles', {'reg', 'r
 			elseif message.guild.id == '407926063281209344' then
 				member:addRole('409109782612672513')
 			end
-			if next(roleList)~=nil then
+			if roleList>0 then
 				if channel then
 					channel:send {
 						embed = {

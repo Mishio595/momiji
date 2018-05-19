@@ -101,6 +101,7 @@ end
 
 -- Resolves a member object given a guild and a string. Will match with ID or name
 local function resolveMember(guild,name)
+	name = tostring(name)
 	local this = getIdFromString(name)
 	local m
 	if this then
