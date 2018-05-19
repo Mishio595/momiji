@@ -908,7 +908,7 @@ addCommand('Register', 'Register a given user with the listed roles', {'reg', 'r
 			elseif message.guild.id == '407926063281209344' then
 				member:addRole('409109782612672513')
 			end
-			if roleList>0 then
+			if #roleList>0 then
 				if channel then
 					channel:send {
 						embed = {
