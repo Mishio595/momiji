@@ -224,7 +224,7 @@ addCommand('Help', 'Display help information', {'help', 'cmds', 'commands'}, '[c
 		end
 		if cmd then
 			names = {}
-			for _,v in pairs(tbl.commands) do
+			for _,v in pairs(cmd.commands) do
 				table.insert(names, v)
 			end
 			message:reply {embed={
