@@ -108,7 +108,7 @@ local function resolveMember(guild,name)
 		m = guild:getMember(this)
 	else
 		m = guild.members:find(function(mem)
-			return string.lower(mem.nickname)==string.lower(name) or string.lower(mem.username)==string.lower(name)
+			return string.lower(mem.username)==string.lower(name) or string.lower(mem.name)==string.lower(name)
 		end)
 	end
 	return m
