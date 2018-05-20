@@ -373,10 +373,10 @@ addCommand('Add Self Role', 'Add role(s) to yourself from the self role list', {
 	end
 	local desc = {}
 	if #rolesAdded > 0 then
-		table.insert(desc, fmt("**Added %s to the following roles**\n %s", member.mentionString, table.concat(rolesAdded,"\n")))
+		table.insert(desc, fmt("**Added %s to the following roles**\n%s", member.mentionString, table.concat(rolesAdded,"\n")))
 	end
 	if #rolesFailed > 0 then
-		table.insert(desc, fmt("**Failed to add %s to the following roles**\n %s", member.mentionString, table.concat(rolesFailed,"\n")))
+		table.insert(desc, fmt("**Failed to add %s to the following roles**\n%s", member.mentionString, table.concat(rolesFailed,"\n")))
 	end
 	if next(desc)~=nil then
 		message.channel:send{embed={
