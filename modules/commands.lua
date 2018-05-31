@@ -314,7 +314,7 @@ end)
 addCommand('Ping', 'Ping!', 'ping', '', 0, false, false, false, function(message)
 	local response = message:reply("Pong!")
 	if response then
-		response:setContent(fmt("Pong! `%s`", math.abs(math.round((response.createdAt - message.createdAt)*1000))))
+		response:setContent(fmt("Pong! `%s ms`", math.abs(math.round((response.createdAt - message.createdAt)*1000))))
 	end
 end)
 
@@ -1561,7 +1561,7 @@ addCommand('Lua', "Execute arbitrary lua code", "lua", '<code>', 4, false, false
 		timer = require("timer"),
 		print = function(...)
 			local arguments = {...}
-			for k,v in pairs(arguments) do arguments[k] = tostring(v) end
+			for i,v in ipairs(arguments) do arguments[i] = tostring(v) end
 			local txt = table.concat(arguments, "\t").."\n"
 			tx = tx..txt
 		end,
