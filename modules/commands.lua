@@ -1365,7 +1365,7 @@ addCommand('Make Role', 'Make a role for the rolelist', {'makerole','mr'}, 'role
 		if next(aliases)==nil then
 			message.channel:sendf("Added %s to %s", r.name, cat)
 		else
-			message.channel:sendf("Added %s to #s with aliases %s", r.name, cat, table.concat(aliases,', '))
+			message.channel:sendf("Added %s to %s with aliases %s", r.name, cat, table.concat(aliases,', '))
 		end
 		modules.database:update(message, "Roles", roles)
 	else
